@@ -1,0 +1,8 @@
+{
+    "epochs": 100,
+    "steps_per_epoch": 256,
+    "num_residual_groups": 3,
+    "training_data_dir": {"raw":"D:/Shivesh/Denoising/20210421_magnify_ZIM504/cond_10ms110_10ms1000_v2/sampled_data/noisy_imgs/",
+                          "gt":"D:/Shivesh/Denoising/20210421_magnify_ZIM504/cond_10ms110_10ms1000_v2/sampled_data/gt_imgs/"}
+
+}

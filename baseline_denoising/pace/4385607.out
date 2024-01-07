@@ -1,0 +1,36 @@
+---------------------------------------
+Begin Slurm Prolog: Dec-12-2023 22:11:30
+Job ID:    4385607
+User ID:   schaudhary9
+Account:   gts-hl94-joe
+Job name:  N2V
+Partition: gpu-v100
+QOS:       inferno
+---------------------------------------
+2023-12-12 22:11:38.600653: I tensorflow/core/util/port.cc:113] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2023-12-12 22:11:38.911174: E external/local_xla/xla/stream_executor/cuda/cuda_dnn.cc:9261] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+2023-12-12 22:11:38.911259: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:607] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+2023-12-12 22:11:38.936105: E external/local_xla/xla/stream_executor/cuda/cuda_blas.cc:1515] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+2023-12-12 22:11:39.017012: I tensorflow/core/platform/cpu_feature_guard.cc:182] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 AVX512F AVX512_VNNI FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2023-12-12 22:11:41.330097: W tensorflow/compiler/tf2tensorrt/utils/py_utils.cc:38] TF-TRT Warning: Could not find TensorRT
+{'means': ['0.27825114'], 'stds': ['0.18580545'], 'n_dim': 2, 'axes': 'SYXC', 'n_channel_in': 1, 'n_channel_out': 1, 'unet_residual': True, 'unet_n_depth': 2, 'unet_kern_size': 3, 'unet_n_first': 32, 'unet_last_activation': 'linear', 'unet_input_shape': (None, None, 1), 'train_loss': 'mse', 'train_epochs': 100, 'train_steps_per_epoch': 10, 'train_learning_rate': 0.0004, 'train_batch_size': 16, 'train_tensorboard': True, 'train_checkpoint': 'weights_best.h5', 'train_reduce_lr': {'factor': 0.5, 'patience': 10}, 'batch_norm': True, 'n2v_perc_pix': 0.198, 'n2v_patch_shape': (64, 64), 'n2v_manipulator': 'uniform_withCP', 'n2v_neighborhood_radius': 2, 'single_net_per_channel': False, 'blurpool': False, 'skip_skipone': False, 'structN2Vmask': None, 'probabilistic': False}
+Traceback (most recent call last):
+  File "/storage/home/hcoda1/0/schaudhary9/p-hl94-0/siva_projects/baseline_denoising/train_N2V.py", line 40, in <module>
+    model = N2V(config, 'N2V_planaria', basedir='/storage/home/hcoda1/0/schaudhary9/p-hl94-0/siva_projects/baseline_denoising/N2V')
+  File "/storage/home/hcoda1/0/schaudhary9/.conda/envs/baseline_denoising/lib/python3.9/site-packages/n2v/models/n2v_standard.py", line 79, in __init__
+    raise ValueError('Invalid configuration attributes: ' + ', '.join(invalid_attr))
+ValueError: Invalid configuration attributes: axes
+---------------------------------------
+Begin Slurm Epilog: Dec-12-2023 22:12:03
+Job ID:        4385607
+Array Job ID:  _4294967294
+User ID:       schaudhary9
+Account:       gts-hl94-joe
+Job name:      N2V
+Resources:     cpu=12,gres/gpu:v100=1,mem=32G,node=1
+Rsrc Used:     cput=00:06:36,vmem=22715464K,walltime=00:00:33,mem=22215780K,energy_used=0
+Partition:     gpu-v100
+QOS:           inferno
+Nodes:         atl1-1-02-006-33-0
+---------------------------------------
