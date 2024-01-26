@@ -19,7 +19,7 @@ def metrics_ssim(img1, img2):
     data_range = max(np.max(img1), np.max(img2)) - min(np.min(img1), np.min(img2))
     # data_range = np.max(img1) - np.min(img1)
     # data_range = np.max(img2) - np.min(img2)
-    (score, diff) = structural_similarity(img1, img1, full=True, data_range=data_range)
+    (score, diff) = structural_similarity(img1, img2, full=True, data_range=data_range)
     return score
 
 def metrics_lpips(img1, img2): 
