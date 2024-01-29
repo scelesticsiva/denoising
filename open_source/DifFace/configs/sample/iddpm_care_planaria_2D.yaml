@@ -18,7 +18,7 @@ diffusion:
 
 model:
   target: models.unet.UNetModel
-  ckpt_path: /storage/home/hcoda1/0/schaudhary9/p-hl94-0/siva_projects/DifFace/difface_run_care_planaria_2D_2/ema_ckpts/ema0999_model_540000.pth
+  ckpt_path: /home/sivark/supporting_files/denoising/trained_models/diffusion/ckpts_from_shivesh/ema0999_model_580000_planaria.pth
   params:
     image_size: 64
     in_channels: 1
