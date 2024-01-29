@@ -1,0 +1,39 @@
+gpu_id: ""
+seed: 10000
+display: False
+im_size: 512
+
+diffusion:
+  target: models.script_util.create_gaussian_diffusion
+  params:
+    steps: 1000
+    learn_sigma: True
+    sigma_small: False
+    noise_schedule: linear
+    use_kl: False
+    predict_xstart: False
+    rescale_timesteps: False
+    rescale_learned_sigmas: True
+    timestep_respacing: ""
+
+model:
+  target: models.unet.UNetModel
+  ckpt_path: /storage/home/hcoda1/0/schaudhary9/p-hl94-0/siva_projects/DifFace/difface_run_niddl_wb_2/ema_ckpts/ema0999_model_200000.pth
+  params:
+    image_size: 512
+    in_channels: 1
+    model_channels: 32
+    out_channels: 2
+    attention_resolutions: [32, 16, 8]
+    dropout: 0
+    channel_mult: [1, 2, 4, 8, 8, 16, 16]
+    num_res_blocks: [1, 2, 2, 2, 2, 3, 4]
+    conv_resample: True
+    dims: 2
+    use_fp16: False
+    num_head_channels: 64
+    use_scale_shift_norm: True
+    resblock_updown: False
+    use_new_attention_order: False
+
+model_ir: ~
