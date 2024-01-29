@@ -492,6 +492,127 @@ class GaussianDiffusion:
                 yield out
                 img = out["sample"]
 
+    def p_sample_loop_w_mixing(
+        self,
+        model,
+        shape,
+        noise=None,
+        start_timesteps=None,
+        clip_denoised=True,
+        denoised_fn=None,
+        model_kwargs=None,
+        device=None,
+        progress=False,
+        mixing_img=None,
+        time_steps_to_mix=None,
+        mixing_weights=None,
+    ):
+        """
+        Generate samples from the model.
+
+        :param model: the model module.
+        :param shape: the shape of the samples, (N, C, H, W).
+        :param noise: if specified, the noise from the encoder to sample.
+                      Should be of the same shape as `shape`.
+        :param clip_denoised: if True, clip x_start predictions to [-1, 1].
+        :param denoised_fn: if not None, a function which applies to the
+            x_start prediction before it is used to sample.
+        :param model_kwargs: if not None, a dict of extra keyword arguments to
+            pass to the model. This can be used for conditioning.
+        :param device: if specified, the device to create the samples on.
+                       If not specified, use a model parameter's device.
+        :param progress: if True, show a tqdm progress bar.
+        :param mixing_img: Dictionary containing mapping between time steps and image to be mixed
+        :param time_steps_to_mix: List of time steps to mix
+        :param mixing_weights: Dictionary containin mapping between time steps and mixing weights
+
+        :return: a non-differentiable batch of samples.
+        """
+        final = None
+        for sample in self.p_sample_loop_progressive_w_mixing(
+            model,
+            shape,
+            noise=noise,
+            start_timesteps=start_timesteps,
+            clip_denoised=clip_denoised,
+            denoised_fn=denoised_fn,
+            model_kwargs=model_kwargs,
+            device=device,
+            progress=progress,
+            mixing_img=mixing_img,
+            time_steps_to_mix=time_steps_to_mix,
+            mixing_weights=mixing_weights,
+        ):
+            final = sample
+        return final["sample"]
+
+    def p_sample_loop_progressive_w_mixing(
+        self,
+        model,
+        shape,
+        noise=None,
+        start_timesteps=None,
+        clip_denoised=True,
+        denoised_fn=None,
+        model_kwargs=None,
+        device=None,
+        progress=False,
+        mixing_img=None,
+        time_steps_to_mix=None,
+        mixing_weights=None,
+    ):
+        """
+        Generate samples from the model and yield intermediate samples from
+        each timestep of diffusion.
+
+        Arguments are the same as p_sample_loop().
+        Returns a generator over dicts, where each dict is the return value of
+        p_sample().
+        """
+        if device is None:
+            device = next(model.parameters()).device
+        assert isinstance(shape, (tuple, list))
+        if noise is not None:
+            img = noise
+        else:
+            img = th.randn(*shape, device=device)
+        if start_timesteps is None:
+            indices = list(range(self.num_timesteps))[::-1]
+        else:
+            assert noise is not None
+            indices = list(range(start_timesteps))[::-1]
+
+        if progress:
+            # Lazy import so that we don't depend on tqdm.
+            from tqdm.auto import tqdm
+
+            indices = tqdm(indices)
+
+        time_steps_to_mix = set(time_steps_to_mix)
+        assert time_steps_to_mix is not None
+        if mixing_weights is None:
+            mixing_weights = {time_steps_to_mix: th.tensor(0.5) for _ in time_steps_to_mix}
+
+        for i in indices:
+            t = th.tensor([i] * shape[0], device=device)
+
+            if i in time_steps_to_mix:
+                weight = mixing_weights[i]
+                mixing_img_xN_given_y0 = self.q_sample(mixing_img, t)
+                img = ((1 - weight) * img) + (weight * mixing_img_xN_given_y0)
+
+            with th.no_grad():
+                out = self.p_sample(
+                    model,
+                    img,
+                    t,
+                    clip_denoised=clip_denoised,
+                    denoised_fn=denoised_fn,
+                    model_kwargs=model_kwargs,
+                )
+                yield out
+                img = out["sample"]
+
     def ddim_sample(
         self,
         model,
