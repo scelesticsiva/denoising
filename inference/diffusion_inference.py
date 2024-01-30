@@ -12,6 +12,8 @@ from sampler import BaseSampler
 from utils import util_common
 from utils import util_image
 from torch.utils import data
+from torch.nn.functional import pad
+from torch.profiler import profile, record_function, ProfilerActivity
 
 from inference.data import npz_dataset
 from inference.val_utils import filter_val_files
@@ -61,7 +63,19 @@ class DiffusionSampler(BaseSampler):
             sample = util_image.normalize_th(sample, reverse=True).clamp(0.0, 1.0)
         return sample
 
+def collate_fn(data):
+    # assume data is a list of dicts with 2 keys: {img, fpth}
+    # pad all images to same number of channels
+    imgs = [torch.from_numpy(d['img']) for d in data]
+    orig_channels = [img.shape[0] for img in imgs]
+    channel_padding = max(orig_channels)
+    imgs = [pad(img, ((0, 0, 0, 0, 0, channel_padding-img.shape[0])), 'constant', 0) for img in imgs]
+    imgs = torch.stack(imgs) 
+    fpths = [d['fpth'] for d in data]
+    return {'img': imgs, 'fpth': fpths, 'orig_channels': orig_channels}
+
 def main(cfg):
+    os.makedirs(cfg.save_dir, exist_ok=True)
     transform = thv.transforms.Normalize(mean=(0.5), std=(0.5))
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -77,26 +91,45 @@ def main(cfg):
 
     all_val_files = filter_val_files(cfg.noisy_img_dir, val_files=cfg.val_files, ext='*.npz')
     dataset = npz_dataset.NPZ3DDataset(all_val_files, key='pred')
-    dataloader = data.DataLoader(dataset, batch_size=1, shuffle=True)
+    dataloader = data.DataLoader(dataset, batch_size=cfg.batch_size, shuffle=True, collate_fn=collate_fn, num_workers=cfg.num_workers)
     print(f'Device availability:{device}')
 
     for batch in dataloader:
         st = time.time()
-        y0 = transform(torch.permute(batch['img'].to(device), (1, 0, 2, 3)))
+        img = batch['img'].to(device)
+        orig_bsz, channels, H, W = img.shape
+        # stack all images into one batch
+        img = img.view(orig_bsz * channels, 1, H, W)
+        y0 = transform(img)
         xN_given_y0 = sampler_dist.diffusion.q_sample(y0, tN)
-        x0_sampled = sampler_dist.sample_func(
-            noise=xN_given_y0,
-            start_timesteps=tN,
-            bs=len(y0),
-            num_images=len(y0),
-        )
-
+        # NOTE(matt) - the bottleneck is somewhere in sample_func;
+        # but the profiler is not correctly capturing CUDA calls.
+        # may need to update pytorch to get the profiler working.
+        with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True) as prof:
+            with record_function("sample_func"):
+                x0_sampled = sampler_dist.sample_func(
+                    noise=xN_given_y0,
+                    start_timesteps=tN,
+                    bs=len(y0),
+                    num_images=len(y0),
+                )
+        prof_stats = prof.key_averages().table(sort_by="cuda_time_total", row_limit=10)
+        print(prof_stats)
+        with open(cfg.save_dir, 'prof_stats.txt', 'w') as f:
+            f.write(prof_stats)
+        #print(f'time (sample): {time.time() - st:.4f} seconds')
+        #print(x0_sampled.shape)
+        # unstack output
+        x0_sampled = x0_sampled.view(orig_bsz, channels, H, W)
         # Save the denoised
-        assert len(batch['fpth']) == 1
-        save_fpth = os.path.join(cfg.save_dir, os.path.basename(batch['fpth'][0]))
-        to_save = np.transpose(x0_sampled.cpu().numpy(), (1, 0, 2, 3)).squeeze(axis=0)
-        np.savez_compressed(save_fpth, pred=to_save)
-        print(f'Saved pred to {save_fpth}, shape of pred: {to_save.shape}, time: {time.time() - st:.4f} seconds')
+        for i in range(orig_bsz):
+            save_fpth = os.path.join(cfg.save_dir, os.path.basename(batch['fpth'][i]))
+            # un-pad channel dim if necessary
+            orig_channels = batch['orig_channels'][i]
+            to_save = x0_sampled[i, :orig_channels, ...].cpu().numpy()
+            print(to_save.shape)
+            np.savez_compressed(save_fpth, pred=to_save)
+            print(f'Saved pred to {save_fpth}, shape of pred: {to_save.shape}, time: {time.time() - st:.4f} seconds')
 
 if __name__ == '__main__':
     from munch import Munch
@@ -104,9 +137,13 @@ if __name__ == '__main__':
     config = Munch.fromDict(dict(
         cfg_path='/home/sivark/repos/denoising/open_source/DifFace/configs/sample/iddpm_planaria_LargeMdl.yaml',
         gpu_id='0',
-        tN=500,
+        #tN=500,
+        tN=50,
+        batch_size=4,
+        num_workers=4,
         noisy_img_dir='/home/sivark/supporting_files/denoising/data/planaria/Denoising_Planaria/n2v_pred/condition_1/',
-        save_dir='/home/sivark/supporting_files/denoising/data/planaria/Denoising_Planaria/diffusion_pred/t500_from_n2v/condition_1/',
+        #save_dir='/home/sivark/supporting_files/denoising/data/planaria/Denoising_Planaria/diffusion_pred/t500_from_n2v/condition_1/',
+        save_dir='/home/mds/data/denoising/test/',
         val_files=['EXP280_Smed_live_RedDot1_slide_mnt_N3_stk1',
                    'EXP278_Smed_fixed_RedDot1_sub_5_N7_m0003',
                    'EXP278_Smed_fixed_RedDot1_sub_5_N7_m0005',
