@@ -32,7 +32,6 @@ class DiffusionSampler(BaseSampler):
             num_images=1000):
         #print('Begining sampling:')
         if mixing_img_batch is not None:
-            print("doing mixing")
             device = mixing_img_batch.device
 
             # Mixing time steps in reverse direction
@@ -123,6 +122,10 @@ def main(cfg):
         all_data_to_infer = all_data_to_infer[splits[cfg.split_to_infer]].squeeze(axis=1)
         print(f'Loaded {cfg.split_to_infer} split')
 
+    if cfg.do_mixing:
+        all_data_to_mix = np.load(cfg.noisy_img_npz)[cfg.mixing_key_in_npz]
+        assert (len(all_data_to_infer) == len(all_data_to_mix))
+
     #print(f'Number of datapoints to infer: {len(all_data_to_infer)}')
     #print(f'Device availability:{device}')
 
@@ -133,37 +136,47 @@ def main(cfg):
     for b_idx in range(n_batches):
         from_ = (b_idx * cfg.bsz)
         to_ = ((b_idx + 1) * cfg.bsz)
+
         curr_batch = all_data_to_infer[from_: to_, ...]
         B, C, H, W = curr_batch.shape
         curr_batch = np.reshape(curr_batch, (B * C, 1, H, W))  # Bx1xHxW
-
-        st = time.time()
         y0 = transform(torch.from_numpy(curr_batch).to(device))
-        xN_given_y0 = sampler_dist.diffusion.q_sample(y0, tN)
 
         if cfg.do_mixing:
-            mixing_img_batch = y0
-            mixing_start_time = cfg.mixing_start_time
-            mixing_end_time = cfg.mixing_end_time
-            mixing_time_step = cfg.mixing_time_step
-        else:
-            mixing_img_batch = None
-            mixing_start_time = None
-            mixing_end_time = None
-            mixing_time_step = None
+            curr_batch_to_mix = all_data_to_mix[from_: to_, ...]
+            B, C, H, W = curr_batch_to_mix.shape
+            curr_batch_to_mix = np.reshape(curr_batch_to_mix, (B * C, 1, H, W))  # Bx1xHxW
+            mixing_img_batch = transform(torch.from_numpy(curr_batch_to_mix).to(device))
 
-        x0_sampled = sampler_dist.sample_func(
-            mixing_img_batch=mixing_img_batch,
-            mixing_start_time=mixing_start_time,
-            mixing_end_time=mixing_end_time,
-            noise=xN_given_y0,
-            start_timesteps=tN,
-            bs=len(y0),
-            num_images=len(y0),
-        )
+        st = time.time()
 
-        # Save the denoised
-        curr_pred = x0_sampled.cpu().numpy()
+        master_curr_pred = None
+        for _ in range(cfg.n_samples):
+            xN_given_y0 = sampler_dist.diffusion.q_sample(y0, tN)
+            if cfg.do_mixing:
+                x0_sampled = sampler_dist.sample_func(
+                    mixing_img_batch=mixing_img_batch,
+                    mixing_start_time=cfg.mixing_start_time,
+                    mixing_end_time=cfg.mixing_end_time,
+                    mixing_time_step=cfg.mixing_time_step,
+                    noise=xN_given_y0,
+                    start_timesteps=tN,
+                    bs=len(y0),
+                    num_images=len(y0),
+                )
+            else:
+                x0_sampled = sampler_dist.sample_func(
+                    noise=xN_given_y0,
+                    start_timesteps=tN,
+                    bs=len(y0),
+                    num_images=len(y0),
+                )
+            if master_curr_pred is None:
+                master_curr_pred = x0_sampled
+            else:
+                master_curr_pred += x0_sampled
+        master_curr_pred = master_curr_pred / torch.tensor(cfg.n_samples)
+        curr_pred = master_curr_pred.cpu().numpy()
         master_pred.append(curr_pred.reshape(B, C, H, W))
 
         #if (b_idx+1) % 20 == 0:
@@ -173,7 +186,7 @@ def main(cfg):
     #save_fpth = cfg.save_fpth.replace('.npz', f'_t{cfg.tN}.npz')
     save_fpth = cfg.save_fpth
     np.savez_compressed(save_fpth, pred=to_save)
-    #print(f'Saved pred to {save_fpth}, shape of pred: {to_save.shape}, time: {time.time() - st:.4f} seconds')
+    print(f'Saved pred to {save_fpth}, shape of pred: {to_save.shape}, time: {time.time() - st:.4f} seconds')
 
 if __name__ == '__main__':
     from munch import Munch
@@ -182,18 +195,21 @@ if __name__ == '__main__':
     #   clean:    the clean data
     #   noisy:    the noisy data
     #   n2v_only: the outputs of N2V (w/o diffusion)
-    data_npz = '/home/mds/data/denoising/datasets/clean_noisy_n2v_val_set_subset10.npz',
+    #data_npz = '/home/mds/data/denoising/datasets/clean_noisy_n2v_val_set.npz'
+    data_npz = '/home/mds/data/denoising/datasets/clean_noisy_n2v_val_set_subset10.npz'
 
     # output dir to save all the runs
-    tune_dir = '/home/mds/data/denoising/hparam_tuning/diffusion_outputs/val_subset10/v2'
+    #tune_dir = '/home/mds/data/denoising/hparam_tuning/diffusion_outputs/val_all/v1'
+    tune_dir = '/home/mds/data/denoising/hparam_tuning/diffusion_outputs/val_subset10/v9'
     os.makedirs(tune_dir, exist_ok=True)
 
     # base config params
-    diff_mdl_cfg = '/home/sivark/repos/denoising/open_source/DifFace/configs/sample/iddpm_planaria_LargeMdl.yaml',
+    diff_mdl_cfg = '/home/sivark/repos/denoising/open_source/DifFace/configs/sample/iddpm_planaria_LargeMdl_80percent_train.yaml'
+
     config = dict(
         cfg_path=diff_mdl_cfg,
         noisy_img_npz=data_npz,
-        key_in_npz='n2v_only',
+        key_in_npz='noisy',
         gpu_id='0',
         split_fpth=None,
         split_to_infer=None,
@@ -202,18 +218,29 @@ if __name__ == '__main__':
     
     # hparams (grid search)
     # TODO: increase search space
-    tN_grid = [100, 300]
+    #tN_grid = [150, 200, 250, 300]
+    tN_grid = [125]
+    #n_samples_grid = [1, 5, 10, 15, 20]
+    n_samples_grid = [1]
+    # TODO mixing has a bug - leave it turned off for now
+    # NOTE 'mixing_key_in_npz' controls which data to mix in:
+    #    noisy:    mixes in the raw data
+    #    n2v_only: mixes in the 'pseudo-clean' data from running N2V
     mixing_setting_grid = [
-        {'do_mixing': False, 'mixing_start_time': None, 'mixing_end_time': None, 'mixing_time_step': None,},
-        {'do_mixing': True, 'mixing_start_time': 300, 'mixing_end_time': 50, 'mixing_time_step': 1},
+        #{'do_mixing': False},
+        {'do_mixing': True, 'mixing_key_in_npz': 'noisy', 'mixing_start_time': 100, 'mixing_end_time': 50, 'mixing_time_step': 1},
+        #{'do_mixing': True, 'mixing_key_in_npz': 'noisy', 'mixing_start_time': 75, 'mixing_end_time': 50, 'mixing_time_step': 1},
+        #{'do_mixing': True, 'mixing_key_in_npz': 'noisy', 'mixing_start_time': 75, 'mixing_end_time': 25, 'mixing_time_step': 1},
+        #{'do_mixing': True, 'mixing_key_in_npz': 'noisy', 'mixing_start_time': 50, 'mixing_end_time': 25, 'mixing_time_step': 1},
+        #{'do_mixing': True, 'mixing_key_in_npz': 'n2v_only', 'mixing_start_time': 100, 'mixing_end_time': 50, 'mixing_time_step': 1},
     ]
     hparam_grid = list(
-        itertools.product(tN_grid, mixing_setting_grid)
+        itertools.product(tN_grid, n_samples_grid, mixing_setting_grid)
     )
     total_runs = len(hparam_grid)
     print(f"Total hparam grid size: {total_runs}")
-    for i, (tN, mixing_setting) in enumerate(hparam_grid):
-        hparam_dict = {'tN': tN}
+    for i, (tN, n_samples, mixing_setting) in enumerate(hparam_grid):
+        hparam_dict = {'tN': tN, 'n_samples': n_samples}
         hparam_dict.update(mixing_setting)
         print(f"Run {i}/{total_runs}")
         print(hparam_dict)

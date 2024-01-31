@@ -97,8 +97,10 @@ def main(
 
 
 if __name__ == '__main__':
+    #data_npz = '/home/mds/data/denoising/datasets/clean_noisy_n2v_val_set.npz'
+    #tune_dir = '/home/mds/data/denoising/hparam_tuning/diffusion_outputs/val_all/v1'
     data_npz = '/home/mds/data/denoising/datasets/clean_noisy_n2v_val_set_subset10.npz'
-    tune_dir = '/home/mds/data/denoising/hparam_tuning/diffusion_outputs/val_subset10/v2'
+    tune_dir = '/home/mds/data/denoising/hparam_tuning/diffusion_outputs/val_subset10/v9'
 
     save_stats_fpth = os.path.join(tune_dir, 'ssim_results.npz')
 
