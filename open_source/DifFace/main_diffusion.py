@@ -12,7 +12,7 @@ def get_parser(**parser_kwargs):
                                              help="Folder to save the checkpoints and training log")
     parser.add_argument("--resume", type=str, const=True, default="", nargs="?",
                                                       help="resume from the save_dir or checkpoint")
-    parser.add_argument("--cfg_path", type=str, default="./configs/inpainting_debug.yaml",
+    parser.add_argument("--cfg_path", type=str, default="./configs/training/diffusion_yeast.yaml",
                                                                         help="Configs of yaml file")
     parser.add_argument("--seed", type=int, default=10000, help="Random seed")
     args = parser.parse_args()

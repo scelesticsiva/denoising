@@ -38,8 +38,13 @@ def get_transforms(transform_type, out_size, sf):
             thv.transforms.ToTensor(),
             thv.transforms.Normalize(mean=(0.5), std=(0.5))
         ])
+    elif transform_type == 'yeast':
+        transform = thv.transforms.Compose([
+            thv.transforms.ToTensor(),
+            thv.transforms.Normalize(mean=(0.5), std=(0.5))
+        ])
     else:
-        raise ValueError(f'Unexpected transform_variant {transform_variant}')
+        raise ValueError(f'Unexpected transform_variant {transform_type}')
     return transform
 
 def create_dataset(dataset_config):
@@ -55,6 +60,8 @@ def create_dataset(dataset_config):
         dataset = RealESRGANDataset(dataset_config['params'])
     elif dataset_config['type'] == 'care_denoising_planaria':
         dataset = BaseDatasetCARE(**dataset_config['params'])
+    elif dataset_config['type'] == 'yeast':
+        dataset = BaseDatasetYeast(**dataset_config['params'])
     else:
         raise NotImplementedError(dataset_config['type'])
 
@@ -78,6 +85,29 @@ class BaseDatasetCARE(Dataset):
         im = self.images[index]
         im = self.transform(im)
         return {'image':im,}
+
+class BaseDatasetYeast(Dataset):
+    def __init__(self, name,
+                 ):
+        super().__init__()
+        if name == 'yeast':
+            dir_path='/home/cmccue/tmp/denoising/modeltraining_cropped500.npz'
+            self.images = np.load(dir_path)['arr_0'].astype(np.float32) # (500*64, 64, 64)
+            self.images = np.reshape(self.images, [-1, self.images.shape[2], self.images.shape[3]])
+            # The mode input is B, H, W, C
+            self.images = self.images[:, :, :, np.newaxis] #(500*64, 64, 64, 1)
+            print(f'Shape of the dataset: {self.images.shape}')
+
+            self.transform = get_transforms('yeast', None, None)
+
+    def __len__(self):
+        return self.images.shape[0]
+
+    def __getitem__(self, index):
+        im = self.images[index]
+        im = self.transform(im)
+        return {'image':im,}
+
 
 class BaseDatasetFace(Dataset):
     def __init__(self, celeba_txt=None,

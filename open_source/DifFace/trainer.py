@@ -81,6 +81,7 @@ class TrainerBase:
 
         self.num_gpus = num_gpus
         self.rank = int(os.environ['LOCAL_RANK']) if num_gpus > 1 else 0
+        print(self.rank)
 
     def setup_seed(self, seed=None):
         seed = self.configs.seed if seed is None else seed
@@ -91,6 +92,7 @@ class TrainerBase:
 
     def init_logger(self):
         # only should be run on rank: 0
+        print(self.configs.save_dir)
         save_dir = Path(self.configs.save_dir)
         logtxet_path = save_dir / 'training.log'
         log_dir = save_dir / 'logs'
@@ -758,8 +760,8 @@ class TrainerDiffusionFace(TrainerBase):
                                   for key in loss.keys()}
                 self.loss_count = torch.zeros(size=(num_timesteps,), dtype=torch.float64)
             for key, value in loss.items():
-                self.loss_mean[key][tt, ] += value.detach().data.cpu()
-            self.loss_count[tt,] += 1
+                self.loss_mean[key][tt.cpu(), ] += value.detach().data.cpu()
+            self.loss_count[tt.cpu(),] += 1
 
             if self.current_iters % self.configs.train.log_freq[0] == 0 and flag:
                 if torch.any(self.loss_count == 0):

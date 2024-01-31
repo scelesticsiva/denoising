@@ -59,7 +59,7 @@ python datapipe/prepare/face/make_testing_data.py --files_txt datapipe/files_txt
 ```
 #### :dolphin: Train diffusion model
 ```
-CUDA_VISIBLE_DEVICES=0,1,2,3 torchrun --standalone --nproc_per_node=4 --nnodes=1 main_diffusion.py --cfg_path configs/training/diffsuion_ffhq512.yaml --save_dir [Logging Folder]  
+CUDA_VISIBLE_DEVICES=0,1 torchrun --standalone --nproc_per_node=4 --nnodes=1 main_diffusion.py --cfg_path /home/cmccue/git/denoising/open_source/DifFace/configs/training/diffusion_yeast.yaml --save_dir /home/cmccue/tmp/denoising/save1  
 ```
 #### :whale: Train diffused estimator (SwinIR)
 ```
