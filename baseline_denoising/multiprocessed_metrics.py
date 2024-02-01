@@ -148,8 +148,8 @@ if __name__ == '__main__':
     train_data = '/home/sivark/supporting_files/denoising/data/planaria/Denoising_Planaria/train_data/data_label.npz'
     split_fpth = '/home/sivark/supporting_files/denoising/trained_models/planaria_Train2TrainValTestv2.pkl'
     n2v_pred = '/home/sivark/supporting_files/denoising/data/planaria/Denoising_Planaria/Train2TrainValTest_pred/n2v_pred_Train2TrainValTest_val_idxv2.npz'
-    n2v_N_diff_pred = '/home/joy/project_repos/denoising/data/planaria/Denoising_Planaria/Train2TrainValTest_pred/Diff_mixing_clean_pred_Train2TrainValTest_val_idx_t100_ns1.npz'
-    save_stats_fpth = '/home/joy/project_repos/denoising/data/planaria/Denoising_Planaria/Train2TrainValTest_pred/mixing_clean_subset_ssim.npz'
+    n2v_N_diff_pred = '/home/joy/project_repos/denoising/data/planaria/Denoising_Planaria/Train2TrainValTest_pred/Diff_mixing_clean_pred_Train2TrainValTest_val_idx_t100_ns5.npz'
+    save_stats_fpth = '/home/joy/project_repos/denoising/data/planaria/Denoising_Planaria/Train2TrainValTest_pred/mixing_clean_val_idx.npz'
 
     main(
         train_data=train_data,
@@ -158,7 +158,7 @@ if __name__ == '__main__':
         n2v_pred=n2v_pred,
         n2v_N_diff_pred=n2v_N_diff_pred,
         save_stats_fpth=save_stats_fpth,
-        metrics=['ssim', 'psnr', 'fid'],
+        metrics=['ssim', 'psnr'], # ,'fid'
         max_project=True,
         fid_dims=768 # 2048 (final average pooling); 768 (pre-aux classifier); 192 (second max pooling); 64 (first max pooling)
     )
