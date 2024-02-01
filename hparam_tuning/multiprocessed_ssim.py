@@ -80,7 +80,7 @@ def main(
 
     # load diff results from the tuning dir
     tune_run_npz_list = glob.glob(os.path.join(tune_dir, "run*.npz"))
-    for run_npz in tune_run_npz_list:
+    for run_npz in sorted(tune_run_npz_list):
         #print(run_npz)
         run_json = run_npz.replace('.npz', '.json')
         with open(run_json) as f:
@@ -90,7 +90,7 @@ def main(
         data_dict[run_id] = np.load(run_npz)['pred']
         diff_vs_gt_ssim = ssim_multiprocess(data_dict, k1=run_id, k2='gt', max_project=max_project)
         stats[f'diff_{run_id}_vs_gt_ssim'] = diff_vs_gt_ssim
-        print(run_params, f"{diff_vs_gt_ssim[:,1].mean():.03f}")
+        print(run_params, f"ssim: {diff_vs_gt_ssim[:,1].mean():.03f}")
     
     np.savez_compressed(save_stats_fpth, stats=stats)
     print(f'Finished in {time.time() - st:.4f} seconds')
@@ -100,7 +100,7 @@ if __name__ == '__main__':
     #data_npz = '/home/mds/data/denoising/datasets/clean_noisy_n2v_val_set.npz'
     #tune_dir = '/home/mds/data/denoising/hparam_tuning/diffusion_outputs/val_all/v1'
     data_npz = '/home/mds/data/denoising/datasets/clean_noisy_n2v_val_set_subset10.npz'
-    tune_dir = '/home/mds/data/denoising/hparam_tuning/diffusion_outputs/val_subset10/v9'
+    tune_dir = '/home/mds/data/denoising/hparam_tuning/diffusion_outputs/val_subset10/mixing_test'
 
     save_stats_fpth = os.path.join(tune_dir, 'ssim_results.npz')
 

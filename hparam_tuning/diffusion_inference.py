@@ -23,8 +23,10 @@ class DiffusionSampler(BaseSampler):
     def sample_func(
             self, 
             mixing_img_batch=None, 
-            mixing_start_time=300,
+            mixing_start_time=100,
             mixing_end_time=50,
+            mixing_start_weight=0.8,
+            mixing_end_weight=0.01,
             mixing_time_step=1,
             noise=None, 
             start_timesteps=None, 
@@ -39,11 +41,9 @@ class DiffusionSampler(BaseSampler):
             end_time = mixing_end_time
             step_time = mixing_time_step
 
-            # print(np.arange(end_time, start_time, 1)[::-1], device)
-            time_steps_to_mix = torch.from_numpy(np.arange(end_time, start_time, step_time)[::-1].copy()).to(device)
-            const_weights = torch.from_numpy(np.array([0.5] * len(time_steps_to_mix))).to(device)
-            # weights = torch.from_numpy(np.linspace(0.8, 0.01, len(time_steps_to_mix))).to(device)
-            mixing_weights = dict(zip(time_steps_to_mix, const_weights))
+            time_steps_to_mix = list(range(end_time, start_time, step_time))[::-1]
+            weights = torch.from_numpy(np.linspace(mixing_start_weight, mixing_end_weight, len(time_steps_to_mix))).to(device)
+            mixing_weights = dict(zip(time_steps_to_mix, weights))
 
         h = w = self.configs.im_size
         if self.num_gpus != 0:
@@ -158,6 +158,8 @@ def main(cfg):
                     mixing_img_batch=mixing_img_batch,
                     mixing_start_time=cfg.mixing_start_time,
                     mixing_end_time=cfg.mixing_end_time,
+                    mixing_start_weight=cfg.mixing_start_weight,
+                    mixing_end_weight=cfg.mixing_end_weight,
                     mixing_time_step=cfg.mixing_time_step,
                     noise=xN_given_y0,
                     start_timesteps=tN,
@@ -200,7 +202,7 @@ if __name__ == '__main__':
 
     # output dir to save all the runs
     #tune_dir = '/home/mds/data/denoising/hparam_tuning/diffusion_outputs/val_all/v1'
-    tune_dir = '/home/mds/data/denoising/hparam_tuning/diffusion_outputs/val_subset10/v9'
+    tune_dir = '/home/mds/data/denoising/hparam_tuning/diffusion_outputs/val_subset10/mixing_test'
     os.makedirs(tune_dir, exist_ok=True)
 
     # base config params
@@ -217,31 +219,49 @@ if __name__ == '__main__':
     )
     
     # hparams (grid search)
-    # TODO: increase search space
-    #tN_grid = [150, 200, 250, 300]
-    tN_grid = [125]
-    #n_samples_grid = [1, 5, 10, 15, 20]
-    n_samples_grid = [1]
-    # TODO mixing has a bug - leave it turned off for now
+    # each sub-array will be treated independently.
+    # params that depend on each other (e.g. mixing start+end) should be grouped together.
+    # TODO load this from a file
+
     # NOTE 'mixing_key_in_npz' controls which data to mix in:
     #    noisy:    mixes in the raw data
     #    n2v_only: mixes in the 'pseudo-clean' data from running N2V
-    mixing_setting_grid = [
-        #{'do_mixing': False},
-        {'do_mixing': True, 'mixing_key_in_npz': 'noisy', 'mixing_start_time': 100, 'mixing_end_time': 50, 'mixing_time_step': 1},
-        #{'do_mixing': True, 'mixing_key_in_npz': 'noisy', 'mixing_start_time': 75, 'mixing_end_time': 50, 'mixing_time_step': 1},
-        #{'do_mixing': True, 'mixing_key_in_npz': 'noisy', 'mixing_start_time': 75, 'mixing_end_time': 25, 'mixing_time_step': 1},
-        #{'do_mixing': True, 'mixing_key_in_npz': 'noisy', 'mixing_start_time': 50, 'mixing_end_time': 25, 'mixing_time_step': 1},
-        #{'do_mixing': True, 'mixing_key_in_npz': 'n2v_only', 'mixing_start_time': 100, 'mixing_end_time': 50, 'mixing_time_step': 1},
+
+    hparam_grid = [
+        [
+            {'tN': 100},
+        ],
+        [
+            {'n_samples': 1},
+            #{'n_samples': 5},
+            #{'n_samples': 10},
+            #{'n_samples': 20},
+        ],
+        [
+            #{'do_mixing': False},
+            {'do_mixing': True},
+        ],
+        [
+            #{'mixing_key_in_npz': 'noisy'},
+            {'mixing_key_in_npz': 'n2v_only'},
+        ],
+        [
+            {'mixing_start_time': 100, 'mixing_end_time': 20, 'mixing_time_step': 1},
+            #{'mixing_start_time': 100, 'mixing_end_time': 50, 'mixing_time_step': 1},
+        ],
+        [
+            #{'mixing_start_weight': 0.8, 'mixing_end_weight': 0.01},
+            {'mixing_start_weight': 0.3, 'mixing_end_weight': 0.01},
+        ],
     ]
+
     hparam_grid = list(
-        itertools.product(tN_grid, n_samples_grid, mixing_setting_grid)
+        itertools.product(*hparam_grid)
     )
     total_runs = len(hparam_grid)
     print(f"Total hparam grid size: {total_runs}")
-    for i, (tN, n_samples, mixing_setting) in enumerate(hparam_grid):
-        hparam_dict = {'tN': tN, 'n_samples': n_samples}
-        hparam_dict.update(mixing_setting)
+    for i, hparams in enumerate(hparam_grid):
+        hparam_dict = {k: v for d in hparams for k, v in d.items()}
         print(f"Run {i}/{total_runs}")
         print(hparam_dict)
         run_path = os.path.join(tune_dir, f'run{i}')
