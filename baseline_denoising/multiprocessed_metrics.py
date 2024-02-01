@@ -32,12 +32,10 @@ def metrics_psnr(img1, img2, max_value=255):
         return 100
     return 20 * np.log10(max_value / (np.sqrt(mse)))
 
-def metrics_lpips(img1, img2): 
+def metrics_lpips(img1, img2, loss_fn): 
     img1 = torch.tensor(img1, dtype=torch.float32)
     img2 = torch.tensor(img2, dtype=torch.float32)
-    loss_fn_alex = lpips.LPIPS(net='alex') # best forward scores
-    # loss_fn_vgg = lpips.LPIPS(net='vgg') # closer to "traditional" perceptual loss, when used for optimization
-    score = loss_fn_alex(img1, img2)
+    score = loss_fn.forward(img1, img2)
     return score.item()
 
 def metrics_fid(img1, img2, dims=2048, num_workers=1, batch_size=8):
@@ -69,7 +67,7 @@ def metrics_fid_batch(data_dict, k1, k2, max_project, dims=2048, num_workers=1, 
         img1, img2 = np.max(img1_vol, axis=0), np.max(img2_vol, axis=0)
         return metrics_fid(img1, img2, dims, num_workers, batch_size) 
 
-def single_vol(payload, max_project, metric):
+def single_vol(payload, max_project, metric, loss_fn_lpips):
     idx, img1_vol, img2_vol = payload
 
     assert len(img1_vol) == len(img2_vol)
@@ -82,7 +80,7 @@ def single_vol(payload, max_project, metric):
             elif metric == 'psnr':
                 curr_metric = metrics_psnr(img1_slice, img2_slice)
             elif metric == 'lpips':
-                curr_metric = metrics_lpips(img1_slice, img2_slice)
+                curr_metric = metrics_lpips(img1_slice, img2_slice, loss_fn_lpips)
             vol_metric_list.append(curr_metric)
         return (idx, np.mean(vol_metric_list))
     else:
@@ -92,7 +90,7 @@ def single_vol(payload, max_project, metric):
         elif metric == 'psnr':
             single_metric = metrics_psnr(img1, img2)
         elif metric == 'lpips':
-            single_metric = metrics_lpips(img1, img2)
+            single_metric = metrics_lpips(img1, img2, loss_fn_lpips)
         return (idx, single_metric)
 
 def metric_multiprocess(data_dict, k1, k2, max_project, metric):
@@ -101,7 +99,13 @@ def metric_multiprocess(data_dict, k1, k2, max_project, metric):
     all_rows = list(zip(np.arange(len(data_dict[k1])), data_dict[k1], data_dict[k2]))
     assert 'gt' not in k1, 'While building linear regression, this changes gt to prediction, try setting k2=gt'
     print(f'Running metrics on {len(all_rows)} test images')
-    partial_obj = partial(single_vol, max_project=max_project, metric=metric)
+    
+    loss_fn_lpips = None
+    if metric == 'lpips':
+        loss_fn_lpips = lpips.LPIPS(net='alex') # best forward scores
+        # loss_fn_lpips = lpips.LPIPS(net='vgg') # closer to "traditional" perceptual loss, when used for optimization
+        
+    partial_obj = partial(single_vol, max_project=max_project, metric=metric, loss_fn_lpips=loss_fn_lpips)
 
     # parallel
     pool_obj = Pool(20)
@@ -118,7 +122,7 @@ def main(train_data, split_fpth, split_name, n2v_pred, n2v_N_diff_pred, save_sta
 
     split_X, split_Y = whole_X[splits[split_name]], whole_Y[splits[split_name]],
     n2v = np.load(n2v_pred)['pred']
-    n2v_diff = np.load(n2v_N_diff_pred)['pred']#[:8]
+    n2v_diff = np.load(n2v_N_diff_pred)['pred']
 
     # To remove
     split_X = split_X[0: len(n2v_diff)]
@@ -201,7 +205,7 @@ if __name__ == '__main__':
         n2v_pred=n2v_pred,
         n2v_N_diff_pred=n2v_N_diff_pred,
         save_stats_fpth=save_stats_fpth,
-        metrics=['fid', 'ssim', 'psnr'], #'lpips', 
+        metrics=['ssim', 'psnr', 'lpips', 'fid'],
         max_project=True,
         fid_dims=2048 # 2048 (final average pooling); 768 (pre-aux classifier); 192 (second max pooling); 64 (first max pooling)
     )
