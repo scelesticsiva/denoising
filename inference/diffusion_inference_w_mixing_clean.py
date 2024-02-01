@@ -24,14 +24,14 @@ class DiffusionSampler(BaseSampler):
         device = mixing_img_batch.device
 
         # Mixing time steps in reverse direction
-        start_time = 300
+        start_time = 100
         end_time = 50
 
         # print(np.arange(end_time, start_time, 1)[::-1], device)
-        time_steps_to_mix = torch.from_numpy(np.arange(end_time, start_time, 1)[::-1].copy()).to(device)
-        const_weights = torch.from_numpy(np.array([0.5] * len(time_steps_to_mix))).to(device)
-        # weights = torch.from_numpy(np.linspace(0.8, 0.01, len(time_steps_to_mix))).to(device)
-        mixing_weights = dict(zip(time_steps_to_mix, const_weights))
+        time_steps_to_mix = list(range(end_time, start_time, 1))[::-1]
+        # const_weights = torch.from_numpy(np.array([0.5] * len(time_steps_to_mix))).to(device)
+        weights = torch.from_numpy(np.linspace(0.8, 0.01, len(time_steps_to_mix))).to(device)
+        mixing_weights = dict(zip(time_steps_to_mix, weights))
 
         h = w = self.configs.im_size
         if self.num_gpus != 0:
@@ -168,13 +168,13 @@ if __name__ == '__main__':
         tN=100, 
         noisy_img_npz='/home/sivark/supporting_files/denoising/data/planaria/Denoising_Planaria/train_data/data_label.npz',
         clean_img_npz='/home/sivark/supporting_files/denoising/data/planaria/Denoising_Planaria/Train2TrainValTest_pred/n2v_pred_Train2TrainValTest_val_idxv2.npz',
-        save_fpth='/home/joy/project_repos/denoising/data/planaria/Denoising_Planaria/Train2TrainValTest_pred/Diff_mixing_clean_pred_Train2TrainValTest_val_idx.npz',
+        save_fpth='/home/sivark/supporting_files/denoising/data/planaria/Denoising_Planaria/Train2TrainValTest_pred/Diff_mixing_clean_pred_Train2TrainValTest_val_idx_afterbugfix.npz',
         key_in_npz='X',
         key_in_npz_clean='pred',
         split_fpth='/home/sivark/supporting_files/denoising/trained_models/planaria_Train2TrainValTestv2.pkl',  # Only required when predicting starting from raw data
         split_to_infer='val_idx',  # Only required when predicting starting from raw data
         bsz=8,
-        n_samples=20,
+        n_samples=5,
     ))
 
     main(config)
