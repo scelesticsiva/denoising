@@ -40,23 +40,36 @@ def metrics_lpips(img1, img2):
     score = loss_fn_alex(img1, img2)
     return score.item()
 
-def metrics_fid(img1, img2, dims=2048, num_workers=0, batch_size=8):
-    print(f'Calculating FID using {dims} dims')
-
+def metrics_fid(img1, img2, dims=2048, num_workers=1, batch_size=8):
     device = torch.device('cuda' if (torch.cuda.is_available()) else 'cpu')
 
     block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[dims]
     model = InceptionV3([block_idx]).to(device).float()
-    m1, s1 = calculate_activation_statistics([img1], model, batch_size=batch_size, dims=dims,
+    m1, s1 = calculate_activation_statistics(img1, model, batch_size=batch_size, dims=dims,
                                     device=device, num_workers=num_workers
                                     )
-    m2, s2 = calculate_activation_statistics([img2], model, batch_size=batch_size, dims=dims,
+    m2, s2 = calculate_activation_statistics(img2, model, batch_size=batch_size, dims=dims,
                                     device=device, num_workers=num_workers
                                     )
     score = calculate_frechet_distance(m1, s1, m2, s2)
     return score
 
-def single_vol(payload, max_project, metric, fid_dims=None):
+def metrics_fid_batch(data_dict, k1, k2, max_project, dims=2048, num_workers=1, batch_size=8):
+    print(f'Calculating FID using {dims} dims')
+
+    img1_vol, img2_vol = data_dict[k1], data_dict[k2]
+
+    if not max_project:
+        vol_metric_list = []
+        for (img1_slice, img2_slice) in zip(img1_vol, img2_vol):
+            curr_metric = metrics_fid(img1_slice, img2_slice, dims, num_workers, batch_size)
+            vol_metric_list.append(curr_metric)
+        return np.mean(vol_metric_list)
+    else:
+        img1, img2 = np.max(img1_vol, axis=0), np.max(img2_vol, axis=0)
+        return metrics_fid(img1, img2, dims, num_workers, batch_size) 
+
+def single_vol(payload, max_project, metric):
     idx, img1_vol, img2_vol = payload
 
     assert len(img1_vol) == len(img2_vol)
@@ -70,8 +83,6 @@ def single_vol(payload, max_project, metric, fid_dims=None):
                 curr_metric = metrics_psnr(img1_slice, img2_slice)
             elif metric == 'lpips':
                 curr_metric = metrics_lpips(img1_slice, img2_slice)
-            elif metric == 'fid':
-                curr_metric = metrics_fid(img1_slice, img2_slice, fid_dims)
             vol_metric_list.append(curr_metric)
         return (idx, np.mean(vol_metric_list))
     else:
@@ -82,17 +93,15 @@ def single_vol(payload, max_project, metric, fid_dims=None):
             single_metric = metrics_psnr(img1, img2)
         elif metric == 'lpips':
             single_metric = metrics_lpips(img1, img2)
-        elif metric == 'fid':
-            single_metric = metrics_fid(img1, img2, fid_dims)
         return (idx, single_metric)
 
-def metric_multiprocess(data_dict, k1, k2, max_project, metric, fid_dims=None):
+def metric_multiprocess(data_dict, k1, k2, max_project, metric):
     metric_list = []
 
     all_rows = list(zip(np.arange(len(data_dict[k1])), data_dict[k1], data_dict[k2]))
     assert 'gt' not in k1, 'While building linear regression, this changes gt to prediction, try setting k2=gt'
     print(f'Running metrics on {len(all_rows)} test images')
-    partial_obj = partial(single_vol, max_project=max_project, metric=metric, fid_dims=fid_dims)
+    partial_obj = partial(single_vol, max_project=max_project, metric=metric)
 
     # parallel
     pool_obj = Pool(20)
@@ -123,33 +132,67 @@ def main(train_data, split_fpth, split_name, n2v_pred, n2v_N_diff_pred, save_sta
 
     print(f'Shape of noisy, gt, n2v and n2v + diff: {split_X.shape, split_Y.shape, n2v.shape, n2v_diff.shape}')
 
+    metrics_scores = []
     for metric in metrics:
         st = time.time()
 
-        noisy_vs_gt_score = metric_multiprocess(data_dict, k1='noise', k2='gt', max_project=max_project, metric=metric, fid_dims=fid_dims)
-        n2v_vs_gt_score = metric_multiprocess(data_dict, k1='n2v', k2='gt', max_project=max_project, metric=metric, fid_dims=fid_dims)
-        diff_vs_gt_score = metric_multiprocess(data_dict, k1='n2v_diff', k2='gt', max_project=max_project, metric=metric, fid_dims=fid_dims)
+        if metric == 'fid':
+            print(f'metric: {metric}')
+            nworkers = 1
+            bs = 4
 
-        print(f"{metric.upper()} condition <-> GT: {noisy_vs_gt_score[:, 1].mean()}")
-        print(f"{metric.upper()} n2v <-> GT: {n2v_vs_gt_score[:, 1].mean()}")
-        print(f"{metric.upper()} +diff <-> GT: {diff_vs_gt_score[:, 1].mean()}")
+            # computes score for whole dataset
+            noisy_vs_gt_score_avg = metrics_fid_batch(data_dict, k1='noise', k2='gt', max_project=max_project, dims=fid_dims, num_workers=nworkers, batch_size=bs)
+            n2v_vs_gt_score_avg = metrics_fid_batch(data_dict, k1='n2v', k2='gt', max_project=max_project, dims=fid_dims, num_workers=nworkers, batch_size=bs)
+            diff_vs_gt_score_avg = metrics_fid_batch(data_dict, k1='n2v_diff', k2='gt', max_project=max_project, dims=fid_dims, num_workers=nworkers, batch_size=bs)
 
-        save_fpth = save_stats_fpth.replace('.npz', f'_{metric}.npz')
+            metric = f'{metric}_dim{fid_dims}'
+        else: # ssim, psnr, or lpips
+            # computes score per image
+            noisy_vs_gt_score = metric_multiprocess(data_dict, k1='noise', k2='gt', max_project=max_project, metric=metric)
+            n2v_vs_gt_score = metric_multiprocess(data_dict, k1='n2v', k2='gt', max_project=max_project, metric=metric)
+            diff_vs_gt_score = metric_multiprocess(data_dict, k1='n2v_diff', k2='gt', max_project=max_project, metric=metric)
 
-        np.savez_compressed(save_fpth, stats={
-            'noisy_vs_gt_score': noisy_vs_gt_score,
-            'n2v_vs_gt_score': n2v_vs_gt_score,
-            'diff_vs_gt_score': diff_vs_gt_score,
-        })
+            # save metrics per image
+            save_fpth = save_stats_fpth.replace('.npz', f'_{metric}.npz')
+
+            np.savez_compressed(save_fpth, stats={
+                'noisy_vs_gt_score': noisy_vs_gt_score,
+                'n2v_vs_gt_score': n2v_vs_gt_score,
+                'diff_vs_gt_score': diff_vs_gt_score,
+            })
+
+            # average score for whole dataset
+            noisy_vs_gt_score_avg = noisy_vs_gt_score[:, 1].mean()
+            n2v_vs_gt_score_avg = n2v_vs_gt_score[:, 1].mean()
+            diff_vs_gt_score_avg = diff_vs_gt_score[:, 1].mean()
+        
+        # report averaged score for whole dataset
+        print(f"{metric.upper()} condition <-> GT: {noisy_vs_gt_score_avg}")
+        print(f"{metric.upper()} n2v <-> GT: {n2v_vs_gt_score_avg}")
+        print(f"{metric.upper()} +diff <-> GT: {diff_vs_gt_score_avg}")
+
         print(f'Finished {metric.upper()} in {time.time() - st:.4f} seconds')
+        metrics_scores.append([n2v_N_diff_pred, metric, noisy_vs_gt_score_avg, n2v_vs_gt_score_avg, diff_vs_gt_score_avg])
+    
+    df = pd.DataFrame(metrics_scores, columns=['diff_path', 'metric', 'noisy_vs_gt', 'n2v_vs_gt', 'diff_vs_gt'])
+    
+    out_path = save_stats_fpth.replace('.npz', '_scores.pickle')
+    df.to_pickle(out_path)
+    print(f'Saved metrics to pickle: {out_path}')
+
+    out_path = save_stats_fpth.replace('.npz', '_scores.csv')
+    df.to_csv(out_path, index=False)
+    print(f'Saved metrics to csv: {out_path}')
 
 
 if __name__ == '__main__':
     train_data = '/home/sivark/supporting_files/denoising/data/planaria/Denoising_Planaria/train_data/data_label.npz'
     split_fpth = '/home/sivark/supporting_files/denoising/trained_models/planaria_Train2TrainValTestv2.pkl'
     n2v_pred = '/home/sivark/supporting_files/denoising/data/planaria/Denoising_Planaria/Train2TrainValTest_pred/n2v_pred_Train2TrainValTest_val_idxv2.npz'
-    n2v_N_diff_pred = '/home/joy/project_repos/denoising/data/planaria/Denoising_Planaria/Train2TrainValTest_pred/Diff_mixing_clean_pred_Train2TrainValTest_val_idx_t100_ns5.npz'
-    save_stats_fpth = '/home/joy/project_repos/denoising/data/planaria/Denoising_Planaria/Train2TrainValTest_pred/mixing_clean_val_idx.npz'
+    n2v_N_diff_pred = '/home/joy/project_repos/denoising/data/planaria/Denoising_Planaria/Train2TrainValTest_pred/Diff_mixing_clean_pred_Train2TrainValTest_val_idx_afterbugfix_et50_t100_ns1.npz'
+    save_stats_fpth = n2v_N_diff_pred.replace('.npz', '_metrics.npz')
+    print(f'save_stats_fpth: {save_stats_fpth}')
 
     main(
         train_data=train_data,
@@ -158,7 +201,7 @@ if __name__ == '__main__':
         n2v_pred=n2v_pred,
         n2v_N_diff_pred=n2v_N_diff_pred,
         save_stats_fpth=save_stats_fpth,
-        metrics=['ssim', 'psnr'], # ,'fid'
+        metrics=['fid', 'ssim', 'psnr'], #'lpips', 
         max_project=True,
-        fid_dims=768 # 2048 (final average pooling); 768 (pre-aux classifier); 192 (second max pooling); 64 (first max pooling)
+        fid_dims=2048 # 2048 (final average pooling); 768 (pre-aux classifier); 192 (second max pooling); 64 (first max pooling)
     )
