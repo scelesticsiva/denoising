@@ -27,7 +27,7 @@ class DiffusionSampler(BaseSampler):
         end_time = 50
 
         # print(np.arange(end_time, start_time, 1)[::-1], device)
-        time_steps_to_mix = torch.from_numpy(np.arange(end_time, start_time, 1)[::-1].copy()).to(device)
+        time_steps_to_mix = list(range(end_time, start_time, 1))[::-1]
         const_weights = torch.from_numpy(np.array([0.5] * len(time_steps_to_mix))).to(device)
         # weights = torch.from_numpy(np.linspace(0.8, 0.01, len(time_steps_to_mix))).to(device)
         mixing_weights = dict(zip(time_steps_to_mix, const_weights))
