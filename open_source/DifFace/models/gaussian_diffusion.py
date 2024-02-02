@@ -506,6 +506,7 @@ class GaussianDiffusion:
         mixing_img=None,
         time_steps_to_mix=None,
         mixing_weights=None,
+        n_repaint=None,
     ):
         """
         Generate samples from the model.
@@ -542,6 +543,7 @@ class GaussianDiffusion:
             mixing_img=mixing_img,
             time_steps_to_mix=time_steps_to_mix,
             mixing_weights=mixing_weights,
+            n_repaint=n_repaint,
         ):
             final = sample
         return final["sample"]
@@ -560,6 +562,7 @@ class GaussianDiffusion:
         mixing_img=None,
         time_steps_to_mix=None,
         mixing_weights=None,
+        n_repaint=None,
     ):
         """
         Generate samples from the model and yield intermediate samples from
@@ -597,21 +600,37 @@ class GaussianDiffusion:
             t = th.tensor([i] * shape[0], device=device)
 
             if i in time_steps_to_mix:
-                weight = mixing_weights[i]
                 mixing_img_xN_given_y0 = self.q_sample(mixing_img, t)
-                img = ((1 - weight) * img) + (weight * mixing_img_xN_given_y0)
 
-            with th.no_grad():
-                out = self.p_sample(
-                    model,
-                    img,
-                    t,
-                    clip_denoised=clip_denoised,
-                    denoised_fn=denoised_fn,
-                    model_kwargs=model_kwargs,
-                )
-                yield out
-                img = out["sample"]
+                for _ in range(n_repaint):
+                    weight = mixing_weights[i]
+                    img = ((1 - weight) * img) + (weight * mixing_img_xN_given_y0)
+
+                    with th.no_grad():
+                        out = self.p_sample(
+                            model,
+                            img,
+                            t,
+                            clip_denoised=clip_denoised,
+                            denoised_fn=denoised_fn,
+                            model_kwargs=model_kwargs,
+                        )
+                        yield out
+                        img = out["sample"]
+            else:
+                with th.no_grad():
+                    out = self.p_sample(
+                        model,
+                        img,
+                        t,
+                        clip_denoised=clip_denoised,
+                        denoised_fn=denoised_fn,
+                        model_kwargs=model_kwargs,
+                    )
+                    yield out
+                    img = out["sample"]
+
+
 
     def ddim_sample(
         self,
