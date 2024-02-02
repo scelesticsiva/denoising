@@ -612,6 +612,118 @@ class GaussianDiffusion:
                 )
                 yield out
                 img = out["sample"]
+    
+    def p_sample_loop_w_repaint(
+        self,
+        model,
+        shape,
+        noise=None,
+        start_timesteps=None,
+        repeat_timesteps=None,
+        num_repeats=None,
+        clip_denoised=True,
+        denoised_fn=None,
+        model_kwargs=None,
+        device=None,
+        progress=False,
+    ):
+        """
+        Generate samples from the model.
+
+        :param model: the model module.
+        :param shape: the shape of the samples, (N, C, H, W).
+        :param noise: if specified, the noise from the encoder to sample.
+                      Should be of the same shape as `shape`.
+        :param clip_denoised: if True, clip x_start predictions to [-1, 1].
+        :param denoised_fn: if not None, a function which applies to the
+            x_start prediction before it is used to sample.
+        :param model_kwargs: if not None, a dict of extra keyword arguments to
+            pass to the model. This can be used for conditioning.
+        :param device: if specified, the device to create the samples on.
+                       If not specified, use a model parameter's device.
+        :param progress: if True, show a tqdm progress bar.
+        :param repeat_timestep: integer describing to start repainting after repeat_timestep
+        :param num_repeats: integer describing number of repeats to while repainting
+
+        :return: a non-differentiable batch of samples.
+        """
+        final = None
+        for sample in self.p_sample_loop_progressive_w_repaint(
+            model,
+            shape,
+            noise=noise,
+            start_timesteps=start_timesteps,
+            clip_denoised=clip_denoised,
+            denoised_fn=denoised_fn,
+            model_kwargs=model_kwargs,
+            device=device,
+            progress=progress,
+            repeat_timesteps=repeat_timesteps,
+            num_repeats=num_repeats,
+        ):
+            final = sample
+        return final["sample"]
+
+    def p_sample_loop_progressive_w_repaint(
+            self,
+            model,
+            shape,
+            noise=None,
+            start_timesteps=None,
+            clip_denoised=True,
+            denoised_fn=None,
+            model_kwargs=None,
+            device=None,
+            progress=False,
+            repeat_timesteps=1,
+            num_repeats=1,
+        ):
+            """
+            Generate samples from the model and yield intermediate samples from
+            each timestep of diffusion.
+
+            Arguments are the same as p_sample_loop().
+            Returns a generator over dicts, where each dict is the return value of
+            p_sample().
+            """
+            if device is None:
+                device = next(model.parameters()).device
+            assert isinstance(shape, (tuple, list))
+            if noise is not None:
+                img = noise
+            else:
+                img = th.randn(*shape, device=device)
+            if start_timesteps is None:
+                indices = list(range(self.num_timesteps))[::-1]
+            else:
+                assert noise is not None
+                indices = list(range(start_timesteps))[::-1]
+
+            if progress:
+                # Lazy import so that we don't depend on tqdm.
+                from tqdm.auto import tqdm
+
+                indices = tqdm(indices)
+
+            while start_timesteps > 0:
+                indices = list(range(start_timesteps)[::-1])[0:repeat_timesteps]
+                print(f'repainting between {indices[0]}-{indices[-1]} for {num_repeats} times')
+                for rp in range(num_repeats):
+                    for i in indices:
+                        t = th.tensor([i] * shape[0], device=img.device)
+                        with th.no_grad():
+                            out = self.p_sample(
+                                model,
+                                img,
+                                t,
+                                clip_denoised=clip_denoised,
+                                denoised_fn=denoised_fn,
+                                model_kwargs=model_kwargs,
+                            )
+                            if rp == num_repeats - 1:
+                                yield out
+                            img = out["sample"]
+                start_timesteps -= repeat_timesteps
 
     def ddim_sample(
         self,
