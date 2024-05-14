@@ -53,7 +53,7 @@ trainer:
 
 dataset:
   train:
-    path: /mnt/lustre/share/images/val
+    path: /home/mds/data/denoising/external_datasets/sensenoise_srgb_v4_230730/noisy # input directory of JPG/PNG images
     crop_size: 256
     batch_size_per_gpu: ~
     total_bs: 4
@@ -61,7 +61,7 @@ dataset:
     aug: False
     repeat: 1
     sample_ratio: 1
-    mc: True
+    mc: False # set this to false so we don't try to use Memcached
     preload: False
     img_range: 1.
 
