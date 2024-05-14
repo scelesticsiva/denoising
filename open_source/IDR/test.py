@@ -146,11 +146,14 @@ if __name__ == '__main__':
         os.makedirs(args.res_dir)
 
     # set testing datasets
-    if 'gray' in args.ntype:
-        test_data_path_set = [args.root + 'BSD68']
-    else:
-        test_data_path_set = [args.root + 'kodak',
-                              args.root + 'BSDS300/all', ]
+    #if 'gray' in args.ntype:
+    #    test_data_path_set = [args.root + 'BSD68']
+    #else:
+    #    test_data_path_set = [args.root + 'kodak',
+    #                          args.root + 'BSDS300/all', ]
+
+    # directory of JPG/PNG images for testing - TODO change as needed
+    test_data_path_set = ["/home/mds/data/denoising/external_datasets/kodak"]
 
     # model
     ch = 1 if 'gray' in args.ntype else 3
@@ -160,7 +163,8 @@ if __name__ == '__main__':
     cfg.model_args = {'in_channels': ch, 'out_channels': ch}
     net = build_model(cfg)
 
-    net = torch.nn.DataParallel(net)
+    # disable dataparallel so that model loading works
+    #net = torch.nn.DataParallel(net)
     net = net.cuda()
     net.load_state_dict(torch.load(args.model_path))
     net.eval()
