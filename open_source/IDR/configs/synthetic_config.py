@@ -36,7 +36,10 @@ def generateConfig(pre_name, cons, init_cfg):
     # temp_cfg = dict2EdictRecursion(temp_cfg)  # cannot copy the attribute properties. dict only
 
     temp_cfg.name = pre_name
-    temp_cfg.model_dir = './results/%s' % name
+
+    if temp_cfg.model_dir is None:
+        temp_cfg.model_dir = './results/%s' % name
+    
     temp_cfg.result_dir = os.path.join(temp_cfg['model_dir'], 'res-%s' % name)
 
     for item in cons.keys():  # update dict
@@ -60,7 +63,8 @@ def generateConfig(pre_name, cons, init_cfg):
     return
 
 
-idr_config = yaml2edict('./configs/IDR.yaml')
+#idr_config = yaml2edict('./configs/IDR.yaml')
+idr_config = yaml2edict('./configs/IDR_planaria.yaml')
 
 name = 'idr-g'  # idr; Gaussian noise
 generateConfig(name, {
