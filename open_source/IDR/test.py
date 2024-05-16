@@ -64,7 +64,7 @@ def add_noise(clean, ntype, sigma=None):
     return noisy
 
 
-def load_npz(npz_path, key):
+def load_npz(npz_path, key, name):
     data = np.load(npz_path)[key]
     split_train_test_path = os.path.join(os.path.dirname(npz_path), 'Train2TrainValTestv2.pkl')
     if os.path.exists(split_train_test_path):
@@ -72,12 +72,23 @@ def load_npz(npz_path, key):
             train_test_idx = pickle.load(f)
         data = data[train_test_idx['test_idx']]
         print('test split used')
-    # unstack z plane
-    images = np.transpose(data, (0, 2, 1, 3, 4))
-    images = np.reshape(images, (-1, images.shape[2], images.shape[3], images.shape[4]))
+    
+    if name == 'flywing':
+        if key == 'X':
+            # max project since Y is already max projected
+            images = data.max(axis=2)
+        if key == 'Y':
+            # already max projected along z plane
+            images = data
+    else:
+        # unstack z plane
+        images = np.transpose(data, (0, 2, 1, 3, 4))
+        images = np.reshape(images, (-1, images.shape[2], images.shape[3], images.shape[4]))
+        
     # reshape to n x h x w x c (necessary dimensions for IDR)
     n, c, h, w = images.shape
     images = np.reshape(images, (n, h, w, c))
+    
     print(f'Shape of the dataset: {images.shape}')
     return images
 
@@ -94,8 +105,8 @@ def load_noisy_clean_pairs(name):
     else:
         raise ValueError(f'Unsupported data name {name}')
     
-    images_noisy = load_npz(npz_path, 'X')
-    images_clean = load_npz(npz_path, 'Y')
+    images_noisy = load_npz(npz_path, 'X', name)
+    images_clean = load_npz(npz_path, 'Y', name)
     return images_noisy, images_clean
 
 
