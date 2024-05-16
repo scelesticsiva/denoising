@@ -1,6 +1,6 @@
 name: ~
 mode: quick_iter
-model_dir: results/planaria_2D # CHANGE HERE
+model_dir: results/flywing # CHANGE HERE
 result_dir: ~
 resume: True
 cur_iter: 0
@@ -53,7 +53,7 @@ trainer:
 
 dataset:
   train:
-    name: 'planaria_2D' # valid options: planaria_2D, tribolium_2D, flywing
+    name: 'flywing' # valid options: planaria_2D, tribolium_2D, flywing
     #path: /home/mds/data/denoising/external_datasets/sensenoise_srgb_v4_230730/noisy # input directory of JPG/PNG images
     crop_size: 64
     batch_size_per_gpu: ~
