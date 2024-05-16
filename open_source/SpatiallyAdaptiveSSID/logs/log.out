@@ -1,0 +1,393 @@
+    model: ThreeStageModel
+    iter: 1200000
+    networks: 
+        name: BNN
+        type: BNN
+        args: 
+            blindspot: 9
+        name: LAN
+        type: LAN
+        args: 
+            blindspot: 3
+        name: UNet
+        type: UNet
+        args: 
+    train_datasets: 
+        type: BaseDatasetCARENoisy
+        args: 
+            patch_size: 256
+            pin_memory: True
+        batch_size: 8
+    validation_datasets: 
+    lr: 0.0003
+    print_every: 10000000
+    save_every: 10000
+    validate_every: 10000
+    BNN_iters: 400000
+    LAN_iters: 400000
+    UNet_iters: 400000
+    num_iters: 1200000
+    log_dir: logs
+    log_file: logs/log.out
+    model: ThreeStageModel
+    iter: 1200000
+    networks: 
+        name: BNN
+        type: BNN
+        args: 
+            blindspot: 9
+        name: LAN
+        type: LAN
+        args: 
+            blindspot: 3
+        name: UNet
+        type: UNet
+        args: 
+    train_datasets: 
+        type: BaseDatasetCARENoisy
+        args: 
+            patch_size: 256
+            pin_memory: True
+        batch_size: 8
+    validation_datasets: 
+    lr: 0.0003
+    print_every: 10000000
+    save_every: 10000
+    validate_every: 10000
+    BNN_iters: 400000
+    LAN_iters: 400000
+    UNet_iters: 400000
+    num_iters: 1200000
+    log_dir: logs
+    log_file: logs/log.out
+    model: ThreeStageModel
+    iter: 1200000
+    networks: 
+        name: BNN
+        type: BNN
+        args: 
+            blindspot: 9
+        name: LAN
+        type: LAN
+        args: 
+            blindspot: 3
+        name: UNet
+        type: UNet
+        args: 
+    train_datasets: 
+        type: BaseDatasetCARENoisy
+        args: 
+            patch_size: 256
+            pin_memory: True
+        batch_size: 8
+    validation_datasets: 
+    lr: 0.0003
+    print_every: 10000000
+    save_every: 10000
+    validate_every: 10000
+    BNN_iters: 400000
+    LAN_iters: 400000
+    UNet_iters: 400000
+    num_iters: 1200000
+    log_dir: logs
+    log_file: logs/log.out
+    model: ThreeStageModel
+    iter: 1200000
+    networks: 
+        name: BNN
+        type: BNN
+        args: 
+            blindspot: 9
+        name: LAN
+        type: LAN
+        args: 
+            blindspot: 3
+        name: UNet
+        type: UNet
+        args: 
+    train_datasets: 
+        type: BaseDatasetCARENoisy
+        args: 
+            name: planaria_2D
+        batch_size: 8
+    validation_datasets: 
+    lr: 0.0003
+    print_every: 10000000
+    save_every: 10000
+    validate_every: 10000
+    BNN_iters: 400000
+    LAN_iters: 400000
+    UNet_iters: 400000
+    num_iters: 1200000
+    log_dir: logs
+    log_file: logs/log.out
+    model: ThreeStageModel
+    iter: 1200000
+    networks: 
+        name: BNN
+        type: BNN
+        args: 
+            blindspot: 9
+        name: LAN
+        type: LAN
+        args: 
+            blindspot: 3
+        name: UNet
+        type: UNet
+        args: 
+    train_datasets: 
+        type: BaseDatasetCARENoisy
+        args: 
+            name: planaria_2D
+        batch_size: 8
+    validation_datasets: 
+    lr: 0.0003
+    print_every: 10000000
+    save_every: 10000
+    validate_every: 10000
+    BNN_iters: 400000
+    LAN_iters: 400000
+    UNet_iters: 400000
+    num_iters: 1200000
+    log_dir: logs
+    log_file: logs/log.out
+    model: ThreeStageModel
+    iter: 1200000
+    networks: 
+        name: BNN
+        type: BNN
+        args: 
+            blindspot: 9
+        name: LAN
+        type: LAN
+        args: 
+            blindspot: 3
+        name: UNet
+        type: UNet
+        args: 
+    train_datasets: 
+        type: BaseDatasetCARENoisy
+        args: 
+            name: planaria_2D
+        batch_size: 8
+    validation_datasets: 
+    lr: 0.0003
+    print_every: 10000000
+    save_every: 10000
+    validate_every: 10000
+    BNN_iters: 400000
+    LAN_iters: 400000
+    UNet_iters: 400000
+    num_iters: 1200000
+    log_dir: logs
+    log_file: logs/log.out
+    model: ThreeStageModel
+    iter: 1200000
+    networks: 
+        name: BNN
+        type: BNN
+        args: 
+            blindspot: 9
+        name: LAN
+        type: LAN
+        args: 
+            blindspot: 3
+        name: UNet
+        type: UNet
+        args: 
+    train_datasets: 
+        type: BaseDatasetCARENoisy
+        args: 
+            name: planaria_2D
+        batch_size: 8
+    validation_datasets: 
+    lr: 0.0003
+    print_every: 10000000
+    save_every: 10000
+    validate_every: 10000
+    BNN_iters: 400000
+    LAN_iters: 400000
+    UNet_iters: 400000
+    num_iters: 1200000
+    log_dir: logs
+    log_file: logs/log.out
+    model: ThreeStageModel
+    iter: 1200000
+    networks: 
+        name: BNN
+        type: BNN
+        args: 
+            blindspot: 9
+        name: LAN
+        type: LAN
+        args: 
+            blindspot: 3
+        name: UNet
+        type: UNet
+        args: 
+    train_datasets: 
+        type: BaseDatasetCARENoisy
+        args: 
+            name: planaria_2D
+        batch_size: 8
+    validation_datasets: 
+    lr: 0.0003
+    print_every: 10000000
+    save_every: 10000
+    validate_every: 10000
+    BNN_iters: 400000
+    LAN_iters: 400000
+    UNet_iters: 400000
+    num_iters: 1200000
+    log_dir: logs
+    log_file: logs/log.out
+    model: ThreeStageModel
+    iter: 1200000
+    networks: 
+        name: BNN
+        type: BNN
+        args: 
+            blindspot: 9
+        name: LAN
+        type: LAN
+        args: 
+            blindspot: 3
+        name: UNet
+        type: UNet
+        args: 
+    train_datasets: 
+        type: BaseDatasetCARENoisy
+        args: 
+            name: planaria_2D
+        batch_size: 8
+    validation_datasets: 
+    lr: 0.0003
+    print_every: 10000000
+    save_every: 10000
+    validate_every: 10000
+    BNN_iters: 400000
+    LAN_iters: 400000
+    UNet_iters: 400000
+    num_iters: 1200000
+    log_dir: logs
+    log_file: logs/log.out
+    model: ThreeStageModel
+    iter: 1200000
+    networks: 
+        name: BNN
+        type: BNN
+        args: 
+            blindspot: 9
+        name: LAN
+        type: LAN
+        args: 
+            blindspot: 3
+        name: UNet
+        type: UNet
+        args: 
+    train_datasets: 
+        type: BaseDatasetCARENoisy
+        args: 
+            name: planaria_2D
+        batch_size: 8
+    validation_datasets: 
+    lr: 0.0003
+    print_every: 10000000
+    save_every: 10000
+    validate_every: 10000
+    BNN_iters: 400000
+    LAN_iters: 400000
+    UNet_iters: 400000
+    num_iters: 1200000
+    log_dir: logs
+    log_file: logs/log.out
+    model: ThreeStageModel
+    iter: 1200000
+    networks: 
+        name: BNN
+        type: BNN
+        args: 
+            blindspot: 9
+        name: LAN
+        type: LAN
+        args: 
+            blindspot: 3
+        name: UNet
+        type: UNet
+        args: 
+    train_datasets: 
+        type: BaseDatasetCARENoisy
+        args: 
+            name: planaria_2D
+        batch_size: 8
+    validation_datasets: 
+    lr: 0.0003
+    print_every: 10000000
+    save_every: 10000
+    validate_every: 10000
+    BNN_iters: 400000
+    LAN_iters: 400000
+    UNet_iters: 400000
+    num_iters: 1200000
+    log_dir: logs
+    log_file: logs/log.out
+    model: ThreeStageModel
+    iter: 1200000
+    networks: 
+        name: BNN
+        type: BNN
+        args: 
+            blindspot: 9
+        name: LAN
+        type: LAN
+        args: 
+            blindspot: 3
+        name: UNet
+        type: UNet
+        args: 
+    train_datasets: 
+        type: BaseDatasetCARENoisy
+        args: 
+            name: planaria_2D
+        batch_size: 8
+    validation_datasets: 
+    lr: 0.0003
+    print_every: 10000000
+    save_every: 10000
+    validate_every: 10000
+    BNN_iters: 400000
+    LAN_iters: 400000
+    UNet_iters: 400000
+    num_iters: 1200000
+    log_dir: logs
+    log_file: logs/log.out
+    model: ThreeStageModel
+    iter: 1200000
+    networks: 
+        name: BNN
+        type: BNN
+        args: 
+            blindspot: 9
+        name: LAN
+        type: LAN
+        args: 
+            blindspot: 3
+        name: UNet
+        type: UNet
+        args: 
+    train_datasets: 
+        type: BaseDatasetCARENoisy
+        args: 
+            name: planaria_2D
+        batch_size: 8
+    validation_datasets: 
+    lr: 0.0003
+    print_every: 10000000
+    save_every: 10000
+    validate_every: 10000
+    BNN_iters: 400000
+    LAN_iters: 400000
+    UNet_iters: 400000
+    num_iters: 1200000
+    log_dir: logs
+    log_file: logs/log.out

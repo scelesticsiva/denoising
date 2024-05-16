@@ -1,0 +1,48 @@
+{
+    // model
+    "model": "ThreeStageModel",
+    "iter": 0,
+    // net
+    "networks":[{
+        "name": "BNN",
+        "type": "BNN",
+        "args": {
+            "blindspot": 9
+        }
+//         , "path": "/home/nagejacob/Documents/codes/SpatiallyAdaptiveSSID/pretrained_models/BNN.pth"
+    }, {
+        "name": "LAN",
+        "type": "LAN",
+        "args": {
+            "blindspot": 3
+        }
+//         , "path": "/home/nagejacob/Documents/codes/SpatiallyAdaptiveSSID/pretrained_models/LAN.pth"
+    }, {
+        "name": "UNet",
+        "type": "UNet",
+        "args": {}
+//         , "path": "/home/nagejacob/Documents/codes/SpatiallyAdaptiveSSID/pretrained_models/UNet.pth"
+    }],
+    // datasets
+    "train_datasets": [{
+        "type": "BaseDatasetCARENoisy",
+         "args": {
+            "name": "planaria_2D",
+            "split": "train_idx"
+         },
+        "batch_size": 16
+    }],
+    "validation_datasets": [],
+    // training parameters
+    "lr": 3e-4,
+    "print_every": 1000,
+    "save_every": 50000,
+    "validate_every": 50000,
+    "BNN_iters": 100000,
+    "LAN_iters": 100000,
+    "UNet_iters": 100000,
+    "num_iters": 300000,
+    "log_dir": "/home/schaudhary/siva_projects/SpatiallyAdaptiveSSID/logs/train_care_planaria_2D_3",
+    "log_file": "/home/schaudhary/siva_projects/SpatiallyAdaptiveSSID/logs/train_care_planaria_2D_3/log.out"
+//    , "resume_from": ""
+}
