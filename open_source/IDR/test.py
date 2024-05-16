@@ -1,9 +1,11 @@
 import argparse
+import pickle
 
 import torch.nn.functional as F
 # from skimage.measure import compare_psnr, compare_ssim
 from skimage.metrics import peak_signal_noise_ratio as compare_psnr
 from skimage.metrics import structural_similarity as compare_ssim
+from skimage.metrics import mean_squared_error as compare_mse
 
 from utils import *
 # from models import UNet_n2n_un
@@ -62,66 +64,98 @@ def add_noise(clean, ntype, sigma=None):
     return noisy
 
 
-def test(args, net, test_data_path_set):
-    for test_data_path in test_data_path_set:
-        data_list = [os.path.join(test_data_path, item) for item in os.listdir(test_data_path) if
-                     'jpg' in item or 'png' in item]
+def load_npz(npz_path, key):
+    data = np.load(npz_path)[key]
+    split_train_test_path = os.path.join(os.path.dirname(npz_path), 'Train2TrainValTestv2.pkl')
+    if os.path.exists(split_train_test_path):
+        with open(split_train_test_path, 'rb') as f:
+            train_test_idx = pickle.load(f)
+        data = data[train_test_idx['test_idx']]
+        print('test split used')
+    # unstack z plane
+    images = np.transpose(data, (0, 2, 1, 3, 4))
+    images = np.reshape(images, (-1, images.shape[2], images.shape[3], images.shape[4]))
+    # reshape to n x h x w x c (necessary dimensions for IDR)
+    n, c, h, w = images.shape
+    images = np.reshape(images, (n, h, w, c))
+    print(f'Shape of the dataset: {images.shape}')
+    return images
 
-        for noise_level in args.test_noise_levels:
-            if args.save_img:
-                save_dir = os.path.join(args.res_dir, '%s_n' % (args.ntype), 'sigma-%d' % (noise_level))
-                if not os.path.exists(save_dir):
-                    os.makedirs(save_dir, exist_ok=True)
 
-            res = {'psnr': [], 'ssim': []}
-            for idx, item in enumerate(data_list):
-                gt = cv2.imread(item)
-                if 'gray' in args.ntype:
-                    gt = cv2.imread(item, 0)[..., np.newaxis]
+def load_noisy_clean_pairs(name):
+    print(f'dataset: {name}')
 
-                gt_ = gt.astype(float) / 255.0
-                sigma = noise_level / 255. if noise_level > 1 else noise_level
+    if name == 'planaria_2D':
+        npz_path = '/home/schaudhary/siva_projects/denoising/data/Denoising_Planaria/data_label.npz'
+    elif name == 'tribolium_2D':
+        npz_path = '/home/schaudhary/siva_projects/denoising/data/Denoising_Tribolium/train_data/data_label.npz'
+    elif name == 'flywing':
+        npz_path = '/home/schaudhary/siva_projects/denoising/data/Projection_Flywing/train_data/data_label.npz'
+    else:
+        raise ValueError(f'Unsupported data name {name}')
+    
+    images_noisy = load_npz(npz_path, 'X')
+    images_clean = load_npz(npz_path, 'Y')
+    return images_noisy, images_clean
 
-                noisy = add_noise(gt_, args.ntype, sigma=sigma)
 
-                if args.zero_mean:
-                    noisy = noisy - 0.5
+def rescale(im):
+    min = im.min()
+    max = im.max()
+    return (im-min) / (max-min)
 
-                print('\rprocess', idx, len(data_list), item.split('/')[-1], gt.shape, args.ntype, end='')
-                denoised = model_forward(net, noisy)
 
-                denoised = denoised + (0.5 if args.zero_mean else 0)
-                denoised = np.clip(denoised * 255.0 + 0.5, 0, 255).astype(np.uint8)
+def test(args, net, dataset_name):
+    if args.save_img:
+        save_dir = os.path.join(args.res_dir, dataset_name)
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir, exist_ok=True)
 
-                noisy = noisy + (0.5 if args.zero_mean else 0)
-                noisy = np.clip(noisy * 255.0 + 0.5, 0, 255).astype(np.uint8)
+    images_noisy, images_clean = load_noisy_clean_pairs(dataset_name)
+    total_images = images_noisy.shape[0]
+    res = {'psnr': [], 'ssim': [], 'mse': []}
+    for idx, (noisy, gt) in enumerate(zip(images_noisy, images_clean)):
+        #if idx > 1000: break # for debugging
+        noisy = rescale(noisy)
+        gt = rescale(gt)
 
-                # save PSNR
-                temp_psnr = compare_psnr(denoised, gt, data_range=255)
-                temp_ssim = compare_ssim(denoised, gt, data_range=255, multichannel=True)
+        if args.zero_mean:
+            noisy = noisy - 0.5
 
-                res['psnr'].append(temp_psnr)
-                res['ssim'].append(temp_ssim)
+        print('\rprocessing ', idx, '/', total_images, end='')
+        denoised = model_forward(net, noisy)
 
-                if args.save_img:
-                    filename = item.split('/')[-1].split('.')[0] + '_%s' % args.ntype
+        denoised = denoised + (0.5 if args.zero_mean else 0)
+        denoised = np.clip(denoised, 0, 1)
+        noisy = noisy + (0.5 if args.zero_mean else 0)
 
-                    cv2.imwrite(os.path.join(save_dir, '%s_%.2f_out.png' % (filename, temp_psnr)), denoised)
-                    cv2.imwrite(os.path.join(save_dir, '%s_NOISY.png' % (filename)), noisy)
-                    cv2.imwrite(os.path.join(save_dir, '%s_GT.png' % (filename)), gt)
+        # save PSNR
+        temp_psnr = compare_psnr(gt, denoised)
+        temp_ssim = compare_ssim(gt, denoised, multichannel=True)
+        temp_mse = compare_mse(gt, denoised)
 
-            print('\r', 'noise lelvel', noise_level, test_data_path.split('/')[-1], len(data_list),
-                  ', psnr  %.2f ssim %.3f' % (np.mean(res['psnr']), np.mean(res['ssim'])), args.ntype)
+        res['psnr'].append(temp_psnr)
+        res['ssim'].append(temp_ssim)
+        res['mse'].append(temp_mse)
+
+        if args.save_img:
+            filename = str(idx)
+            # convert to uint8 for imwrite
+            denoised = np.clip(denoised * 255.0 + 0.5, 0, 255).astype(np.uint8)
+            noisy = np.clip(noisy * 255.0 + 0.5, 0, 255).astype(np.uint8)
+            gt = np.clip(gt * 255.0 + 0.5, 0, 255).astype(np.uint8)
+            cv2.imwrite(os.path.join(save_dir, '%s_%.2f_out.png' % (filename, temp_psnr)), denoised)
+            cv2.imwrite(os.path.join(save_dir, '%s_NOISY.png' % (filename)), noisy)
+            cv2.imwrite(os.path.join(save_dir, '%s_GT.png' % (filename)), gt)
+
+    print('\nssim %.3f | mse %.3f | psnr %.2f' % (np.mean(res['ssim']), np.mean(res['mse']), np.mean(res['psnr'])))
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='self supervised')
-    parser.add_argument('--root', default="/mnt/lustre/share/cp/zhangyi3/", type=str)
-
-    parser.add_argument('--ntype', default="gaussian", type=str, help='noise type')
+    parser.add_argument('--dataset_name', default=None, type=str)
     parser.add_argument('--model_path', default=None, type=str)
-
-    parser.add_argument('--res_dir', default="results", type=str)
+    parser.add_argument('--res_dir', default="test_output", type=str)
     parser.add_argument('--save_img', default=True, type=bool)
     args = parser.parse_args()
 
@@ -131,42 +165,18 @@ if __name__ == '__main__':
 
     print('Testing', args.model_path)
 
-    # set testing noise levels
-    if "gaussian" in args.ntype:
-        args.zero_mean = True
-        args.test_noise_levels = [25, 50]
-    elif args.ntype == 'line':
-        args.test_noise_levels = [25]
-    elif args.ntype in ['binomial', 'impulse']:
-        args.test_noise_levels = [0.5]
-    else:
-        args.test_noise_levels = [5]
-
     if not os.path.exists(args.res_dir):
         os.makedirs(args.res_dir)
 
-    # set testing datasets
-    #if 'gray' in args.ntype:
-    #    test_data_path_set = [args.root + 'BSD68']
-    #else:
-    #    test_data_path_set = [args.root + 'kodak',
-    #                          args.root + 'BSDS300/all', ]
-
-    # directory of JPG/PNG images for testing - TODO change as needed
-    test_data_path_set = ["/home/mds/data/denoising/external_datasets/kodak"]
-
     # model
-    ch = 1 if 'gray' in args.ntype else 3
-    # net = UNet_n2n_un(in_channels=ch, out_channels=ch)
+    ch = 1 # grayscale images
     cfg = EasyDict()
     cfg.model_name = 'UNet_n2n_un'
     cfg.model_args = {'in_channels': ch, 'out_channels': ch}
     net = build_model(cfg)
 
-    # disable dataparallel so that model loading works
-    #net = torch.nn.DataParallel(net)
     net = net.cuda()
     net.load_state_dict(torch.load(args.model_path))
     net.eval()
 
-    test(args, net, test_data_path_set)
+    test(args, net, args.dataset_name)

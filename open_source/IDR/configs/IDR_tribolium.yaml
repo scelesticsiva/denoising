@@ -1,0 +1,76 @@
+name: ~
+mode: quick_iter
+model_dir: results/tribolium # CHANGE HERE
+result_dir: ~
+resume: True
+cur_iter: 0
+
+
+# training parameters
+
+opt: adam
+lr: !!float 5e-4 # CHANGE HERE
+wd: 0
+seed: ~
+loss_type: l1
+clip_norm: ~
+
+model_name: UNet_n2n_un
+model_args:
+  in_channels: 1
+  out_channels: 1
+
+# no checking for the second folder parameters
+# if the coder write wrong parameters, the config would be rejected by the initial function
+find_unused_params: False
+schedule: cosine
+schedule_args: {}
+
+
+# dist training settings
+dist: True
+dist_type: slurm
+dist_params:
+  backend: nccl
+  port: 29502
+
+
+train_dataset: BaseDatasetCARENoisy 
+prefetcher: CUDAPrefetcher
+
+#
+print_freq: 10
+save_freq: 1000
+save_state_freq: 1000
+save_img_freq: 1000
+total_iter: 50000
+
+
+trainer:
+  name: DenoiseBase_fastIDR
+  ema_decay: -1
+
+
+dataset:
+  train:
+    name: 'tribolium_2D' # valid options: planaria_2D, tribolium_2D, flywing
+    #path: /home/mds/data/denoising/external_datasets/sensenoise_srgb_v4_230730/noisy # input directory of JPG/PNG images
+    crop_size: 64
+    batch_size_per_gpu: ~
+    total_bs: 256
+    worker_num: 1  #
+    aug: False
+    repeat: 1
+    sample_ratio: 1
+    mc: False # set this to false so we don't try to use Memcached
+    preload: False
+    img_range: 1.
+
+
+zero_mean: True
+
+noise_type: g
+noise_level: [0, 50]
+mixed_batch_nl: False
+
+temp: {}
