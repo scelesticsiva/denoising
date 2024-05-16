@@ -1,0 +1,45 @@
+    model: ThreeStageModel
+    iter: 1200000
+    networks: 
+        name: BNN
+        type: BNN
+        args: 
+            blindspot: 9
+        name: LAN
+        type: LAN
+        args: 
+            blindspot: 3
+        name: UNet
+        type: UNet
+        args: 
+    train_datasets: 
+        type: BaseDatasetCARENoisy
+        args: 
+            name: planaria_2D
+        batch_size: 8
+    validation_datasets: 
+    lr: 0.0003
+    print_every: 10000000
+    save_every: 10000
+    validate_every: 10000
+    BNN_iters: 400000
+    LAN_iters: 400000
+    UNet_iters: 400000
+    num_iters: 1200000
+    log_dir: /home/schaudhary/siva_projects/SpatiallyAdaptiveSSID/logs/train_care_planaria_2D
+    log_file: /home/schaudhary/siva_projects/SpatiallyAdaptiveSSID/logs/train_care_planaria_2D/log.out
+2024-05-14, 14:06:44  iter: 1210000, 
+2024-05-14, 14:23:22  iter: 1220000, 
+2024-05-14, 14:40:03  iter: 1230000, 
+2024-05-14, 14:56:47  iter: 1240000, 
+2024-05-14, 15:13:28  iter: 1250000, 
+2024-05-14, 15:30:10  iter: 1260000, 
+2024-05-14, 15:46:55  iter: 1270000, 
+2024-05-14, 16:03:33  iter: 1280000, 
+2024-05-14, 16:20:10  iter: 1290000, 
+2024-05-14, 16:36:50  iter: 1300000, 
+2024-05-14, 16:53:31  iter: 1310000, 
+2024-05-14, 17:10:11  iter: 1320000, 
+2024-05-14, 17:26:54  iter: 1330000, 
+2024-05-14, 17:43:43  iter: 1340000, 
+2024-05-14, 18:00:25  iter: 1350000, 

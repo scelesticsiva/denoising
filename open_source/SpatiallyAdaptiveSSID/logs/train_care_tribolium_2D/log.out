@@ -1,0 +1,44 @@
+    model: ThreeStageModel
+    iter: 1200000
+    networks: 
+        name: BNN
+        type: BNN
+        args: 
+            blindspot: 9
+        name: LAN
+        type: LAN
+        args: 
+            blindspot: 3
+        name: UNet
+        type: UNet
+        args: 
+    train_datasets: 
+        type: BaseDatasetCARENoisy
+        args: 
+            name: tribolium_2D
+        batch_size: 8
+    validation_datasets: 
+    lr: 0.0003
+    print_every: 10000000
+    save_every: 10000
+    validate_every: 10000
+    BNN_iters: 400000
+    LAN_iters: 400000
+    UNet_iters: 400000
+    num_iters: 1200000
+    log_dir: /home/schaudhary/siva_projects/SpatiallyAdaptiveSSID/logs/train_care_tribolium_2D
+    log_file: /home/schaudhary/siva_projects/SpatiallyAdaptiveSSID/logs/train_care_tribolium_2D/log.out
+2024-05-14, 14:13:30  iter: 1210000, 
+2024-05-14, 14:30:23  iter: 1220000, 
+2024-05-14, 14:47:15  iter: 1230000, 
+2024-05-14, 15:04:11  iter: 1240000, 
+2024-05-14, 15:21:06  iter: 1250000, 
+2024-05-14, 15:37:59  iter: 1260000, 
+2024-05-14, 15:54:53  iter: 1270000, 
+2024-05-14, 16:11:45  iter: 1280000, 
+2024-05-14, 16:28:40  iter: 1290000, 
+2024-05-14, 16:45:34  iter: 1300000, 
+2024-05-14, 17:02:25  iter: 1310000, 
+2024-05-14, 17:19:17  iter: 1320000, 
+2024-05-14, 17:36:10  iter: 1330000, 
+2024-05-14, 17:53:00  iter: 1340000, 
